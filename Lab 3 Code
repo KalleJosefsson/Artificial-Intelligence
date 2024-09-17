@@ -1,0 +1,519 @@
+# Classification with the perceptron and logistic regression
+
+__Individual assignment__
+
+Author of the assignment: Pierre Nugues
+
+__Student name__: Kalle Josefsson (ka5532jo-s)
+
+## Objectives
+
+The objectives of this second assignment are to:
+
+1.  Write a linear regression program using gradient descent;
+2.  Write linear classifiers using the perceptron algorithm and logistic regression;
+3.  Experiment variations of the algorithms;
+4.  Evaluate your classifiers;
+5.  Experiment with popular tools;
+6.  Read a scientific article on optimization techniques and comment it;
+7.  Present your code, results, and comments in a short dissertation.
+## Overview
+
+The gradient descent is a basic technique to estimate the parameters of cost functions. 
+1. You will first use the gradient descent method to implement linear regression. 
+2. You will then program the perceptron algorithm. 
+3. Finally, you will improve the threshold function with the logistic curve (logistic regression). 
+
+You will try various configurations and study their influence on the learning speed and accuracy.
+##  Programming language
+As programming language, you will use Python and write your code in this notebook.
+
+You need to have a comprehensive Python distribution such as Anaconda (https://www.anaconda.com/products/individual). This distribution is available on the student computers at the computer science department.
+Finally, you start a notebook by typing:
+
+`jupyter lab`
+
+in a terminal window and you select the notebook by clicking on it in the left pane.
+You run the pieces of code by typing shift+enter. You can also use a programming tool like VS Code or PyCharm.
+## Imports
+Imports you may use
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+## Linear Regression
+
+You will implement the gradient descent method as explained in pages 719--720 in Russell-Norvig and in the slides to compute regression lines. You will implement the stochastic and batch versions of the algorithm.
+
+You must try to do it yourself first. If you encounter difficulties, you also have the solution to this exercise in the section _Solution to linear regression_ below. See: https://github.com/pnugues/edap01/tree/master/gradient_descent_practice
+### Your implementation of linear regression
+You will implement a regression program to predict the counts of _A_'s in a text from the total count of letters. You will apply it on two data sets corresponding to letter counts in the 15 chapters of the French and English versions of _Salammbô_, where the first column is the total count of characters and the second one, the count of A's. 
+
+Start with either French or English and when your program ready, test it on the other language.
+stat_fr = np.array([[36961, 2503],
+                    [43621, 2992],
+                    [15694, 1042],
+                    [36231, 2487],
+                    [29945, 2014],
+                    [40588, 2805],
+                    [75255, 5062],
+                    [37709, 2643],
+                    [30899, 2126],
+                    [25486, 1784],
+                    [37497, 2641],
+                    [40398, 2766],
+                    [74105, 5047],
+                    [76725, 5312],
+                    [18317, 1215]])
+
+stat_en = np.array([[35680, 2217],
+                    [42514, 2761],
+                    [15162, 990],
+                    [35298, 2274],
+                    [29800, 1865],
+                    [40255, 2606],
+                    [74532, 4805],
+                    [37464, 2396],
+                    [31030, 1993],
+                    [24843, 1627],
+                    [36172, 2375],
+                    [39552, 2560],
+                    [72545, 4597],
+                    [75352, 4871],
+                    [18031, 1119]])
+From the datasets above, tell what is ${X}$ and $\mathbf{y}$. Extract:
+1. The ${X}$ matrix, where you will have a column to model the intercept;
+2. The $\mathbf{y}$ vector
+
+from these arrays.
+intercept_column_fr = np.ones((stat_fr.shape[0], 1))
+intercept_column_en = np.ones((stat_en.shape[0], 1))
+
+character_count_column_fr = stat_fr[:, 0].reshape(-1, 1)
+character_count_column_en = stat_en[:, 0].reshape(-1, 1)
+
+X_en_not_norm = np.hstack((intercept_column_en, character_count_column_en))
+y_en_not_norm = stat_en[:, 1]
+
+X_fr_not_norm = np.hstack((intercept_column_fr, character_count_column_fr))
+y_fr_not_norm = stat_fr[:, 1]
+
+Scale the arrays so that they fit in the range [0, 1] on the $x$ and $y$ axes. 
+y_en = y_en_not_norm/max(y_en_not_norm)
+y_fr = y_fr_not_norm/max(y_fr_not_norm)
+X_en = X_en_not_norm.copy()
+X_fr = X_fr_not_norm.copy()
+X_en[:,1] = X_en_not_norm[:,1]/max(X_en_not_norm[:,1])
+X_fr[:,1] = X_fr_not_norm[:,1]/max(X_fr_not_norm[:,1])
+# Predictors
+X_en = np.array(X_en)
+y_en = np.array([y_en]).T
+X_fr = np.array(X_fr)
+y_fr = np.array([y_fr]).T
+ 
+    
+
+    
+#### Gradient descent
+Implement the descent functions. You will pass `X`, `y`, the learning rate in the $\alpha$ variable, the initial weight vector in `w`, the tolerance in the $\epsilon$ variable, the maximal number of epochs in `epochs`. You will return `w`.
+Batch descent
+def fit_batch(X, y, alpha, w,
+                  epochs=500,
+                  epsilon=1.0e-5):
+   
+    alpha = alpha/len(X)
+    for epoch in range(epochs):
+        error = X @ w - y
+        gradient = np.transpose(X) @ error
+        w = w - alpha*gradient #
+        sse = np.transpose(error)@ error
+        if np.linalg.norm(gradient) < epsilon: #if at minimum break 
+            break
+    print("Epoch", epoch)
+    return w
+    
+  
+Stochastic descent
+import random
+def fit_stoch(X, y, alpha, w,
+                  epochs=500,
+                  epsilon=1.0e-5):
+    random.seed(0)
+    index = list(range(len(X)))
+    for epoch in range(epochs):
+        random.shuffle(index)
+        for i in index:
+            error = (X[i] @ w - y[i])
+            gradient = error * X[i:i+1].T
+            w = w - alpha*gradient
+            if np.linalg.norm(gradient) < epsilon:
+                break
+    print("Epoch", epoch)
+    return w
+    
+    
+    
+    # YOUR CODE HERE
+#### Applying batch descent
+Apply the batch descent and print the final weight values 
+print("===Batch descent===")
+alpha = 1.0
+w = np.zeros((X_en.shape[1], 1))
+w = fit_batch(X_en, y_en, alpha, w)
+print("Weights", w)
+print("SSE", np.transpose(X_en @ w - y_en) @ (X_en @ w -y_en))
+
+w[0] = w[0]*np.max(stat_en[:,1]) 
+w[1] = w[1]*np.max(stat_en[:,1])/np.max(stat_en[:,0])
+
+
+print("Restored weights", w)
+Visualize the points of your dataset as well as the regression lines you obtain using matplotlib or another similar program.
+plt.scatter(stat_en[:,0],stat_en[:,1].T)
+
+plt.plot(stat_en[:,0], (X_en_not_norm @ w))
+#### Stochastic descent
+print("===Stochastic descent===")
+alpha = 1.0
+w = np.zeros((X_en.shape[1], 1))
+w = fit_stoch(X_en, y_en, alpha, w)
+print("Weights", w)
+print("SSE", np.transpose(X_en @ w - y_en) @ (X_en @ w -y_en))
+
+w[0] = w[0]*np.max(stat_en[:,1])
+w[1] = w[1]*np.max(stat_en[:,1])/np.max(stat_en[:,0])
+print("Restored weights", w)
+
+Visualize the points of your dataset as well as the regression lines you obtain using matplotlib or another similar program.
+plt.scatter(stat_en[:,0],stat_en[:,1].T)
+
+plt.plot(stat_en[:,0], (X_en_not_norm @ w))
+### A solution to linear regression
+
+To help you start this assignment, your instructor wrote two Python notebooks that solve this exercise on linear regression. You can find them here: https://github.com/pnugues/edap01/tree/master/gradient_descent_practice
+
+2. The first notebook, `gradient_descent_numpy.ipynb`, uses Numpy. It is more compact, but you need to know a bit of numpy, for instance you multiply matrix `M` by matrix `N` with the operation `M @ N`
+1. The second notebook, `gradient_descent.ipynb`, only uses Python. The vector and matrix operations such as the dot product that are in the `vector.py` file. You can see how your instructor write the dot product or matrix multiplication operations so that there is no magic as with NumPy
+
+
+To run these programs, download them on your computer as well as the other program in the import list: vector.py
+
+The programs are also available as Python programs from
+https://github.com/pnugues/ilppp/tree/master/programs/ch04/python
+## Classification
+You will use the same data set as for linear regression, but this time to classify a chapter as French or English. Given a pair of numbers corresponding the letter count and count of _A_, you will predict the language:
+1. $\mathbf{x} = (35680, 2217)$ $\to$ $y$ = English
+2. $\mathbf{x} = (37497, 2641)$ $\to$ $y$ = French
+### The dataset
+You will use the arrays below:
+1. `X` contains the counts of letters and of _A_ s as well as a column of ones for the intercept;
+2. `y` contains the classes, where 0 is for English and 1 for French.
+X = np.array([[1.0, 35680.0, 2217.0],
+              [1.0, 42514.0, 2761.0],
+              [1.0, 15162.0, 990.0],
+              [1.0, 35298.0, 2274.0],
+              [1.0, 29800.0, 1865.0],
+              [1.0, 40255.0, 2606.0
+              [1.0, 74532.0, 4805.0],
+              [1.0, 37464.0, 2396.0],
+              [1.0, 31030.0, 1993.0],
+              [1.0, 24843.0, 1627.0],
+              [1.0, 36172.0, 2375.0],
+              [1.0, 39552.0, 2560.0],
+              [1.0, 72545.0, 4597.0],
+              [1.0, 75352.0, 4871.0],
+              [1.0, 18031.0, 1119.0],
+              [1.0, 36961.0, 2503.0],
+              [1.0, 43621.0, 2992.0],
+              [1.0, 15694.0, 1042.0],
+              [1.0, 36231.0, 2487.0],
+              [1.0, 29945.0, 2014.0],
+              [1.0, 40588.0, 2805.0],
+              [1.0, 75255.0, 5062.0],
+              [1.0, 37709.0, 2643.0],
+              [1.0, 30899.0, 2126.0],
+              [1.0, 25486.0, 1784.0],
+              [1.0, 37497.0, 2641.0],
+              [1.0, 40398.0, 2766.0],
+              [1.0, 74105.0, 5047.0],
+              [1.0, 76725.0, 5312.0],
+              [1.0, 18317.0, 1215.0]])
+y = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+              1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+We visualize it
+x_fr = [x[1] for i, x in enumerate(X) if y[i] == 1]
+y_fr = [x[2] for i, x in enumerate(X) if y[i] == 1]
+x_en = [x[1] for i, x in enumerate(X) if y[i] == 0]
+y_en = [x[2] for i, x in enumerate(X) if y[i] == 0]
+plt.scatter(x_fr, y_fr, color='red')
+plt.scatter(x_en, y_en, color='blue')
+### Normalize the dataset
+Gradient descent algorithms can be very sensitive to the range. Therefore, we normalize the dataset.
+def normalize(Xy):
+    maxima = np.amax(Xy, axis=0)
+    Xy = 1/maxima * Xy
+    return (Xy, maxima)
+X_norm, maxima = normalize(X)
+X_norm
+## The Perceptron
+
+1. Write the perceptron program as explained in pages 723--725 in Russell-Norvig and in the slides and run it on your data set. As suggested program structure, use two functions: 
+ * `fit(X, y)` that will return `w` (the model). You can choose a stochastic or batch variant;
+ * `predict(X, w)` that will return `y_hat`. You can encapsulate these functions in a class and, of course, add more parameters.
+2. As a stop criterion, you will use the number of misclassified examples.
+3. You will report the parameters you have used and the weight vector
+
+You can use numpy or not. The next cells are just suggested steps. You can implement it your way.
+### The `predict(X, w)` function
+Write a `predict(X, w)` function that given a matrix of observations ${X}$ and a weight vector $\mathbf{w}$ will return a $\mathbf{\hat{y}}$ vector classes (0 or 1)
+# Write your code here
+def predict(X, w):
+    y_val = X @ w 
+    y_pred = np.zeros(y_val.shape)
+    
+    for i in range(len(y_val)):
+        if y_val[i] > 0:
+            y_pred[i] = 1
+        else:
+            y_pred[i] = 0
+            
+    return y_pred
+### The `fit(X, y)` function
+Write a `fit(X, y)` function that given a matrix of observations ${X}$ and a vector of responses $\mathbf{y}$ will return a weight $\mathbf{w}$ vector. You may use the other arguments of the function, notably the number of misclassified examples to define the stop condition.
+# Write your code here
+import random
+
+
+def fit_stoch(X, y,
+              epochs=1000,
+              max_misclassified=0,
+              verbose=True, alpha=1):
+    w = np.zeros(X.shape[1])
+    random.seed(0)
+    
+    for epoch in range(epochs):
+        misclassified_count = 0 
+        index = list(range(len(X)))
+        np.random.shuffle(index)
+        
+        for i in index:
+            X_i = X[i]
+            y_i = y[i]
+            prediction = predict(X_i.reshape(1, -1), w)
+            
+            if prediction != y_i:
+                misclassified_count += 1
+                w += alpha * (y_i - prediction[0]) * X_i
+                
+        if verbose and epoch % 100 == 0 and epoch != 0:
+            print(f"Epoch {epoch}, Misclassified {misclassified_count}")
+
+        
+        if misclassified_count <= max_misclassified:
+            if verbose:
+                print(f" Epoch {epoch}, Misclassified {misclassified_count}")
+            break
+    return w
+### Fitting the dataset
+w  = fit_stoch(X_norm, y)
+w
+
+w = [w[i] * maxima[-1] / maxima[i] for i in range(len(w))]
+print("Restored weights", w)
+w = [w[j] / w[-1] for j in range(len(w))]
+print("Weights with y set to 1", w)
+### Visualizing the results
+plt.scatter(x_fr, y_fr, color='red')
+plt.scatter(x_en, y_en, color='blue')
+plt.plot([min(x_fr + x_en), max(x_fr + x_en)],
+         [-w[1] * min(x_fr + x_en) - w[0], -w[1] * max(x_fr + x_en) - w[0]])
+### Evaluation
+Evaluate your perceptron using the leave-one-out cross validation method. You will have to train and run 30 models. In each train/run session, you will train on 29 samples and evaluate on the remaining sample. You have then either a correct or a wrong classification. You will sum these classifications, i.e. the number of correct classifications, to get your final evaluation, for instance 29/30.
+def leave_one_out_cross_val(X, y):
+    score = 0
+    for i in range(len(y)):
+        X_train = np.delete(X, i, axis=0)
+        y_train = np.delete(y, i)
+        X_test = X[i].reshape(1, -1)
+        y_test = y[i]
+        
+        w = fit_stoch(X_train, y_train)
+        prediction = predict(X_test, w)
+        if prediction == y_test:
+                score += 1
+        else: print(i)
+        print("weights:",w )
+    return score / len(y)
+stoch_accuracy = leave_one_out_cross_val(X_norm, y)
+print('Cross-validation accuracy (stochastic):', stoch_accuracy)
+## Logistic Regression
+From your perceptron program, implement logistic regression. You can either follow the description from the slides or from the textbook, S. Russell and R. Norvig, _Artificial Intelligence_, 2010, pages 725--727. Note that the textbook uses a criterion that is rejected by most practioneers. You can either implement the stochastic or the batch version of the algorithm, or both versions. As stop criterion, you will use either the norm of the gradient or the norm of the difference between two consecutive weight vectors. You will also set a maximal number of epochs. Run the resulting program on your dataset.
+Write the logistic function, where the $\mathbf{x}$ input is a vector of real numbers.
+# Write your code here
+def logistic(x):
+    
+    return 1/(1 + np.exp(-x))
+### The `predict(X, w)` function
+Write a `predict_proba()` function that given a matrix of observations ${X}$ and a weight vector $\mathbf{w}$ will return a vector of probabilities to belong to class 1: The vector will consist of $P(1|\mathbf{x}_i)$ for all the $i$ rows of ${X}$.
+# Write your code here
+def predict_proba(X, w):
+    y_probs = np.zeros((X.shape[0],1))
+    y_val = X @ w
+    y_probs = logistic(y_val)
+    return y_probs
+    
+    
+Write a `predict(X, w)` function that given a matrix of observations ${X}$ and a weight vector $\mathbf{w}$ will return the class. You will use `predict_proba()` and set the threshold to belong to class 1 to 0.5.
+# Write your code here
+def predict(X, w):
+    y = predict_proba(X,w)
+  
+    for i in range(len(y)):
+        if y[i] < 0.5:
+            y[i] = 0
+        else: y[i] = 1
+    return y
+    
+### The `fit(X, y)` function
+You will now write the `fit(X, y)` function as with the perceptron. You may call it `fit_stoch(X, y)` or `fit_batch(X, y)`. Use the parameters given in the cell below.
+# Write your code here
+import random
+
+
+def fit_stoch(X, y, alpha=100,
+              epochs=1000,
+              epsilon=1e-4,
+              verbose=False):
+    w = np.zeros(X.shape[1])
+    random.seed(0)
+    
+    
+    for epoch in range(epochs):
+        index = list(range(len(X)))
+        np.random.shuffle(index)
+        misclassified_count = 0
+        w_old = w.copy()
+        for i in index:
+            X_i = X[i]
+            y_i = y[i]
+            prediction = predict(X_i.reshape(1, -1), w)
+            predict_prob = predict_proba(X_i.reshape(1, -1), w)
+            
+            if  prediction != y_i:
+                misclassified_count += 1
+                gradient = (y_i - predict_prob) * X_i
+                w += alpha*gradient
+                
+        
+        if np.linalg.norm(w_old-w) < epsilon:
+            verbose = True
+            print(f"Converged after {epoch+1} epochs.")
+            break
+    
+                
+        
+    print(epoch)
+    print(np.linalg.norm(gradient))
+    return w
+w = fit_stoch(X_norm, y, verbose=True)
+w
+w = [w[i] / maxima[i] for i in range(len(w))]
+print("Restored weights", w)
+w = [w[j] / w[-1] for j in range(len(w))]
+print("Weights with y set to 1", w)
+### Visualizing the results
+plt.scatter(x_fr, y_fr, color='red')
+plt.scatter(x_en, y_en, color='blue')
+plt.plot([min(x_fr + x_en), max(x_fr + x_en)],
+         [-w[1] * min(x_fr + x_en) - w[0], -w[1] * max(x_fr + x_en) - w[0]])
+plt.show()
+### Evaluation
+Evaluate your logistic regression using the leave-one-out cross validation method as with the perceptron
+# Write your code here
+def leave_one_out_cross_val(X, y):
+    score = 0
+    for i in range(len(y)):
+        X_train = np.delete(X, i, axis=0)
+        y_train = np.delete(y, i)
+        X_test = X[i].reshape(1, -1)
+        y_test = y[i]
+        
+        w = fit_stoch(X_train, y_train)
+        prediction = predict(X_test, w)
+        if prediction == y_test:
+                score += 1
+        else: print(i)
+        prob = np.float64(predict_proba(X_test,w))
+        print("weights:",w )
+        print("proabilities", prob)
+    return score / len(y)
+
+stoch_accuracy = leave_one_out_cross_val(X, y)
+print('Cross-validation accuracy (batch):', stoch_accuracy)
+## Visualizing the logistic surface
+def plot_logistic_surf(x_range, y_range, w_opt):
+    x_axis, y_axis = np.meshgrid(x_range, y_range)
+
+    # We compute the probability surface as a function of x and y
+    # First generate the (1, x, y) tuples
+    grid = np.array([[[1.0, i, j] for j in y_range] for i in x_range])
+    # Then, compute logistic((1, x, y) . w_opt)
+    z_axis = logistic((grid @ w_opt))
+    return x_axis, y_axis, z_axis.T
+x_range = np.linspace(0, 100000, 200)
+y_range = np.linspace(0, 10000, 200)
+# w = [2.073225839414742, -0.049125455233437906, 0.7440143556104162]
+
+x_axis, y_axis, z_axis = plot_logistic_surf(x_range, y_range, w)
+
+fig = plt.figure()
+ax = Axes3D(fig, auto_add_to_figure=False)
+fig.add_axes(ax)
+
+surf = ax.plot_surface(y_axis, x_axis, z_axis, rstride=1, cstride=1, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False, alpha=0.2)
+fig.colorbar(surf, shrink=0.5, aspect=5)
+# We plot the observations
+for x, y_class in zip(X, y):
+    if y_class == 1:
+        ax.scatter(x[2], x[1], y_class, color='green', marker='x')
+    else:
+        ax.scatter(x[2], x[1], y_class, color='red', marker='x')
+
+ax.elev = 30
+ax.azim = -150
+plt.show()
+## Programming logistic regression with popular APIs
+Should you use logistic regression in a project, you will probably resort to existing libraries. In the next cells, you will apply the logistic regression classification with two popular APIs:
+1. sklearn
+2. Keras
+
+`sklearn` is included in anaconda.
+You will install the rest with:
+```
+pip install --upgrade keras-core keras-nightly 
+```
+You will read and run the code in the three separate notebooks.
+## Reading
+You will read the article *An overview of gradient descent optimization algorithms* by Ruder (2017) and you will outline the main characteristics of all the optimization algorithms the author describes. This part should be of about one to two pages. Link to the article: https://arxiv.org/abs/1609.04747.
+
+You can also visualize the descents of the algorithm variants on Ruder's webpage: https://www.ruder.io/optimizing-gradient-descent/.
+
+If you understand French, or using Google translate, you may also want to read the original article on gradient descent by Cauchy here:  https://gallica.bnf.fr/ark:/12148/bpt6k2982c/f540.item.
+
+### Report
+
+The assignment must be documented in the report, which should contain the following:
+
+*   The name of the author, the title of the assignment, and any relevant information on the front page;
+*   A presentation of the assignment and the possible improvements you would have brought;
+*   A presentation of your implementation;
+*   A print-out of the example set(s) and the resulting weight vectors;
+*   Comments on the results you have obtained, including your cross validation;
+*   A short dissertation on the optimization algorithms from Ruder's paper.
+
+Please, typeset and format your report consistently. You must use Latex. Documents written using MS Word or any similar format will not be considered.
+
+You may have a look at the code in the textbook code repository (or any other implementations), but the code you hand in must be your work.
+## Submission
+Submit the notebook and the report to Canvas (two files). Do not include the code printout in the report, but only comments on its interesting parts. You will submit the notebook as a separate file.
